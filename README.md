@@ -41,16 +41,16 @@ All existing implementations I found were **incomplete** or **incorrect** with r
   - Mismatched training vs. testing (Robustness)
 ## Sample Results
 ### Pilot-count Effect
-![Pilot-count](figures/fig1_ber_pilot.png)
+![Pilot-count](figs/fig1_ber_pilot.png)
 
 ### CP Removal Effect
-![CP Removal](figures/fig2_ber_no_cp.png)
+![CP Removal](figs/fig2_ber_no_cp.png)
 
 ### Clipping Effect
-![Clipping](figures/fig3_ber_clipping.png)
+![Clipping](figs/fig3_ber_clipping.png)
 
 ### Mismatch Effect
-![Mismatch](figures/fig4_ber_mismatch.png)
+![Mismatch](figs/fig4_ber_mismatch.png)
 
 ## Presentation
 ![pdf](docs/presentation.pdf)
