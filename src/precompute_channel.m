@@ -69,7 +69,7 @@ parfor ii = 1:numSamples
     
     % Channel parameter settings
     cfgWim = winner2.wimparset;
-    cfgWim.NumTimeSamples      = frameLenSym * 40;  
+    cfgWim.NumTimeSamples      = frameLenSym * 10;  
     cfgWim.CenterFrequency     = fc;
     cfgWim.IntraClusterDsUsed  = 'yes';     % Include intra-cluster delay spread
     cfgWim.UniformTimeSampling = 'no';      % Non-uniform time sampling

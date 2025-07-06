@@ -1,4 +1,4 @@
-function H_MMSE = MMSE_channel_estimator(H_LS_values, Ep, Pilot_indices, ...
+function H_MMSE = MMSE_channel_estimator(H_LS_values, noise_power, Pilot_indices, ...
                                          R_H, mu_H, SNRdB)
 
 %   H_LS_values    : LS channel estimation result
@@ -14,7 +14,7 @@ function H_MMSE = MMSE_channel_estimator(H_LS_values, Ep, Pilot_indices, ...
 %   where Y_eq = Y_p ./ X_p  (one-tap LS estimates at pilot positions).
 
 % --- 1. Noise power σ_n² -------------------------------------------------
-sigma_n2  = Ep / 10^(SNRdB/10);          % noise variance per subcarrier
+sigma_n2  = noise_power;          % noise variance per subcarrier
 
 % --- 2. Extract pilot-related statistics --------------------------------
 Np        = numel(Pilot_indices);        % number of pilot tones

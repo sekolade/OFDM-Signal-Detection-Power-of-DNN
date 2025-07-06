@@ -117,10 +117,10 @@ for batch = 1:num_batches
         channel_h = channel_responses_all{ mod(Frame - 1, length(channel_responses_all)) + 1 };
         Multitap_Channel_Signal = conv(Transmitted_signal, channel_h);
         Multitap_Channel_Signal = Multitap_Channel_Signal(1 : length(Transmitted_signal));
-
+        es = mean(abs(Multitap_Channel_Signal).^2);
         % Additive white Gaussian noise
-        Multitap_Channel_Signal = awgn(Multitap_Channel_Signal, SNR, 'measured');
-
+        [Multitap_Channel_Signal,noi] = awgn(Multitap_Channel_Signal, SNR, 'measured');
+        disp(10*log10(es/noi));
         % OFDM receiver with known channel (idealized)
         Channel_signal_when_h_is_known = [1; zeros(size(Multitap_Channel_Signal,1)-1, 1)];
         [Received_data, ~] = OFDM_Receiver(Multitap_Channel_Signal, Num_of_FFT, length_of_CP, length_of_symbol, Channel_signal_when_h_is_known);

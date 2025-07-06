@@ -210,10 +210,9 @@ for SNR = SNR_Range
         % Convolve transmitted OFDM signal with estimated channel taps
         Multitap_Channel_Signal = conv(Transmitted_signal, h_eq);
         Multitap_Channel_Signal = Multitap_Channel_Signal(1:length(Transmitted_signal));
-        
+
         % Add AWGN noise with specified SNR
-        Multitap_Channel_Signal = awgn(Multitap_Channel_Signal, SNR, 'measured');
-        
+        [Multitap_Channel_Signal,noise_power] = awgn(Multitap_Channel_Signal, SNR, 'measured');
         % --- Optional clipping to control PAPR ---
         if clip == 1
             CR      = clip_ratio;            
