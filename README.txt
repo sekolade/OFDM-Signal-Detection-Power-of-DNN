@@ -1,5 +1,5 @@
 # OFDM Channel Estimation & Signal Detection Power of DNN
-Complete MATLAB implementation of 'Power of Deep Learning for Channel Estimation and Signal Detection in OFDM Systems'
+MATLAB implementation of 'Power of Deep Learning for Channel Estimation and Signal Detection in OFDM Systems'
 
 All existing implementations I found were **incomplete** or **incorrect** with respect to the original paper. This repo fixes those issues and adds all missing features building on https://github.com/dianixn/Signal_detection_OFDMPowerofDNN.
 
