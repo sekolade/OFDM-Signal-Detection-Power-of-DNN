@@ -5,11 +5,11 @@ rng('shuffle');                % Use a different random seed every run
 %% 1 | Basic parameters
 numSamples   = 50000;          % Number of distinct channel realizations to generate
 frameLenSym  = 160;            % Length of channel impulse response in symbols
-Rsym         = 1e6;            % Symbol rate [symbols/s]
+Rsym         = 1e5;            % Symbol rate [symbols/s]
 rollOff      = 0.25;           % Root-raised-cosine (RRC) filter roll-off factor
 spanSym      = 10;             % RRC filter span in symbols
 fc           = 2.6e9;          % Carrier frequency for WINNER-II channel [Hz]
-
+max_delay_period = 16;         % Maximum delay of 16 symbol periods as requiered in the paper
 %% 2 | Antenna array definitions
 AA(1) = winner2.AntennaArray('UCA', 16, 0.3);   % Base station: uniform circular array, 16 elements, 0.3λ spacing
 AA(2) = winner2.AntennaArray('UCA',  1, 0.05);  % Mobile station: single antenna, 0.05λ spacing
@@ -46,11 +46,22 @@ parfor ii = 1:numSamples
     cfgLayout.Stations(1).Pos(1:2)  = [150; 150];% BS position [x; y] in meters
     cfgLayout.Stations(2).Pos(1:2)  = [ 10; 180];% MS position [x; y] in meters
 
+
+    
+    % Channel parameter settings
+    cfgWim = winner2.wimparset;
+    cfgWim.CenterFrequency     = fc;
+    cfgWim.IntraClusterDsUsed  = 'yes';     % Include intra-cluster delay spread
+    cfgWim.UniformTimeSampling = 'no';      % Non-uniform time sampling
+    cfgWim.ShadowingModelUsed  = 'yes';     % Enable log-normal shadowing
+    cfgWim.PathLossModelUsed   = 'yes';     % Enable path loss
+    cfgWim.RandomSeed          = randi([0 2^31 - 1]); % Per-realization seed
+    
     % Assign random velocity vector to mobile station
-%     numBSSect = sum(cfgLayout.NofSect);
-%     for k = numBSSect + 1 : numBSSect + numel(MSIdx)
-%         cfgLayout.Stations(k).Velocity = rand(3,1) - 0.5;  % Uniform in [-0.5, 0.5] m/s per axis
-%     end
+    %     numBSSect = sum(cfgLayout.NofSect);
+    %     for k = numBSSect + 1 : numBSSect + numel(MSIdx)
+    %         cfgLayout.Stations(k).Velocity = rand(3,1) - 0.5;  % Uniform in [-0.5, 0.5] m/s per axis
+    %     end
 
 
     % Based on WINNER II Delay distribution, CDF calculation to guarantee
@@ -61,21 +72,11 @@ parfor ii = 1:numSamples
     z = norminv(p, 0, 1);
     logDS_th = -6.63 + 0.32 * z;
     DS_th = 10.^logDS_th;
-    max_fs = 16 / DS_th;
+    max_fs = max_delay_period / DS_th;
     vel_max = max_fs*((2.99792458e8/cfgWim.CenterFrequency/2/2000000));
     for k = numBSSect + 1 : numBSSect + numel(MSIdx)
         cfgLayout.Stations(k).Velocity = (rand(3,1) - 0.5)/0.5 * vel_max;
     end
-    
-    % Channel parameter settings
-    cfgWim = winner2.wimparset;
-    cfgWim.NumTimeSamples      = frameLenSym * 10;  
-    cfgWim.CenterFrequency     = fc;
-    cfgWim.IntraClusterDsUsed  = 'yes';     % Include intra-cluster delay spread
-    cfgWim.UniformTimeSampling = 'no';      % Non-uniform time sampling
-    cfgWim.ShadowingModelUsed  = 'yes';     % Enable log-normal shadowing
-    cfgWim.PathLossModelUsed   = 'yes';     % Enable path loss
-    cfgWim.RandomSeed          = randi([0 2^31 - 1]); % Per-realization seed
 
     % Create channel System object
     WINNERChan = comm.WINNER2Channel(cfgWim, cfgLayout);
@@ -88,13 +89,21 @@ parfor ii = 1:numSamples
     rxRRC = clone(rxRRC_tmpl);
     txRRC.OutputSamplesPerSymbol = L;              % Upsample by L
     rxRRC.InputSamplesPerSymbol  = L;              % Downsample by L after filtering
-
+    
     %% 6.3 | Generate unit impulse at symbol rate
-    impSym = [1; zeros(frameLenSym-1,1)];          % length = frameLenSym
+    impSym = [1];          % length = frameLenSym
     impUp  = upsample(impSym, L);                  % length = frameLenSym * L
 
     %% 6.4 | Transmit through filter, channel, then receive filter
     txSig = txRRC(impUp);  
+
+    % Reconfigure the channel for NumTimeSamples
+    cfgWim.NumTimeSamples      = length(txSig); 
+    WINNERChan = comm.WINNER2Channel(cfgWim, cfgLayout);
+    chanInfo   = info(WINNERChan);
+    Fs         = chanInfo.SampleRate;             % Channel sampling rate [Hz]
+    L          = round(Fs / Rsym);                % Oversampling factor (samples per symbol)
+    
     % Replicate transmit signal per BS element
     txSig = cellfun(@(x) ones(1,x) .* txSig, ...
         num2cell(chanInfo.NumBSElements)', 'UniformOutput', false);
@@ -106,9 +115,17 @@ parfor ii = 1:numSamples
     rxSync   = rxSig(grpDelay+1 : end);            % Remove preamble zeros
     h_eq     = rxSync(1 : L : end);                % Take one sample per symbol
 
-    %% 6.6 | Truncate and store impulse response
-    h_eq_cell{ii} = h_eq(1 : frameLenSym);          % Ensure fixed length
+    % With CDF calculation for mobile velocity for channel configuration above, 
+    % h_eq has max delay of 16 symbol period. Below just truncates/adds
+    % trailing zeros if any
+    if length(h_eq) < max_delay_period
+        h_eq = [h_eq;zeros(max_delay_period-length(h_eq),1)];
+    else
+        h_eq = h_eq(1:max_delay_period);
+    end
 
+    %% 6.6 | Truncate and store impulse response
+    h_eq_cell{ii} = h_eq;          % Ensure fixed length
 end
 
 %% 7 | Save results and clean up
