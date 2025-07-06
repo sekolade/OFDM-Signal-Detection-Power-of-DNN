@@ -26,19 +26,16 @@ All existing implementations I found were **incomplete** or **incorrect** with r
 ## Fixes
 
 - **Computed and Saved Equivalent Discrete-Time Channel Impulse Responses**  
-  Using **pulse shaping → upsampling → channel → matched filtering → downsampling**, to match continuous-time WINNER II in symbol-rate domain.
+  - Using **pulse shaping → upsampling → channel → matched filtering → downsampling**, to match continuous-time WINNER II in symbol-rate domain.
 
 - **Configured 24-Path & 16-Sample Delay**  
-  Requires understanding the channel model’s delay distribution and CDF.
+  - Requires understanding the channel model’s delay distribution and CDF.
 
 - **True MMSE Estimator**  
-  Statistics are extracted from saved responses.
+  - Statistics are extracted from saved responses.
 
 - **Full Simulation Scenarios Implemented**  
-  - Pilot-count variation  
-  - Cyclic-prefix removal  
-  - Clipping noise 
-  - Mismatched training vs. testing (Robustness)
+  - Pilot-count variation, cyclic-prefix removal, clipping noise, mismatched training vs testing
 ## Sample Results
 ### Pilot-count Effect
 ![Pilot-count](figs/fig1_ber_pilot.png)
@@ -53,4 +50,4 @@ All existing implementations I found were **incomplete** or **incorrect** with r
 ![Mismatch](figs/fig4_ber_mismatch.png)
 
 ## Presentation
-![pdf](docs/presentation.pdf)
+[pdf](docs/presentation.pdf)
