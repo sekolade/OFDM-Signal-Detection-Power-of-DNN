@@ -11,7 +11,7 @@ fc           = 2.6e9;          % Carrier frequency for WINNER-II channel [Hz]
 SNR_values = 5:5:25;
 SNR_Range = SNR_values; 
 %
-pilot_num = 64; %Impact of Pilot Numbers
+pilot_num = 32; %Impact of Pilot Numbers
 %
 clip = 0;%Impact of Clipping , %1 enable clipping %0 disable
 clip_ratio = 4.5; % Impact of Clipping
@@ -242,9 +242,10 @@ for SNR = SNR_Range
         H_LS_values   = Y_p ./ X_p;
         H_LS          = interp1(Pilot_indices, H_LS_values, all_indices, 'linear', 'extrap').';
         
-        H_MMSE_values = MMSE_channel_estimator(H_LS_values, noise_power, Pilot_indices, R_H, mu_H);
-        H_MMSE        = interp1(Pilot_indices, H_MMSE_values, all_indices, 'linear', 'extrap').';
-        
+        %H_MMSE_values = MMSE_channel_estimator(H_LS_values, noise_power, Pilot_indices, R_H, mu_H);
+        %H_MMSE        = interp1(Pilot_indices, H_MMSE_values, all_indices, 'linear', 'extrap').';
+        H_MMSE = MMSE_channel_estimator(H_LS_values, noise_power, Pilot_indices, R_H, mu_H);
+
             % --- Zero-Forcing equalization ---
             Received_Signal_ZF = Unrecovered_signal(2:end, data_location) ./ H_LS(:);
             Received_data_ZF   = Received_Signal_ZF;
@@ -252,7 +253,7 @@ for SNR = SNR_Range
             % --- MMSE equalization ---  
             Received_Signal_MMSE = Unrecovered_signal(2:end,data_location) ./ H_MMSE(:);
             Received_data_MMSE   = Received_Signal_MMSE;
-        gg
+        
         %% Compute BER and SER for MMSE
         dataSym_Rx          = QPSK_Demodulator(Received_data_MMSE);
         dataBits_Rx         = de2bi(dataSym_Rx, 2);
