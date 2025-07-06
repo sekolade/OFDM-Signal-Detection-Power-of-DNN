@@ -32,7 +32,7 @@ All existing implementations I found were **incomplete** or **incorrect** with r
   - Requires understanding the channel model’s delay distribution and CDF.
 
 - **True MMSE Estimator**  
-  - Statistics are extracted from saved responses.
+  - Second order statistics are extracted from the saved responses.
 
 - **Full Simulation Scenarios Implemented**  
   - Pilot-count variation, cyclic-prefix removal, clipping noise, mismatched training vs testing
