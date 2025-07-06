@@ -162,7 +162,7 @@ for SNR = SNR_Range
 %             cfgLayout.Stations(i).Velocity = rand(3,1) - 0.5;  % Random MS velocity vector
 %         end
 
-        % Based on WINNER II Delay distribution, CDF calculation to guarantee
+        %% Based on WINNER II Delay distribution, CDF calculation to guarantee
         % maximum delay < 16 sampling period (specified in original paper) by
         % arranging mobile velocity
         numBSSect = sum(cfgLayout.NofSect);
@@ -175,7 +175,7 @@ for SNR = SNR_Range
         for k = numBSSect + 1 : numBSSect + numel(MSIdx)
             cfgLayout.Stations(k).Velocity = (rand(3,1) - 0.5)/0.5 * vel_max;
         end
-
+        %%
 
         WINNERChan = comm.WINNER2Channel(cfgWim, cfgLayout);
         chanInfo   = info(WINNERChan);
@@ -242,7 +242,7 @@ for SNR = SNR_Range
         H_LS_values   = Y_p ./ X_p;
         H_LS          = interp1(Pilot_indices, H_LS_values, all_indices, 'linear', 'extrap').';
         
-        H_MMSE_values = MMSE_channel_estimator(H_LS_values, Ep, Pilot_indices, R_H, mu_H, SNR);
+        H_MMSE_values = MMSE_channel_estimator(H_LS_values, noise_power, Pilot_indices, R_H, mu_H);
         H_MMSE        = interp1(Pilot_indices, H_MMSE_values, all_indices, 'linear', 'extrap').';
         
             % --- Zero-Forcing equalization ---
@@ -252,7 +252,7 @@ for SNR = SNR_Range
             % --- MMSE equalization ---  
             Received_Signal_MMSE = Unrecovered_signal(2:end,data_location) ./ H_MMSE(:);
             Received_data_MMSE   = Received_Signal_MMSE;
-        
+        gg
         %% Compute BER and SER for MMSE
         dataSym_Rx          = QPSK_Demodulator(Received_data_MMSE);
         dataBits_Rx         = de2bi(dataSym_Rx, 2);

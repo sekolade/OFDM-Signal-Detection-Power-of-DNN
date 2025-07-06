@@ -4,7 +4,7 @@ rng('shuffle')                       % Seed random number generator based on cur
 delete(gcp('nocreate'))              % Shut down any existing parallel pools
 
 Training_set_ratio = 0.8;            % Ratio of data to use for training
-Num_of_training_and_validation_frame = 100000;  % Total number of frames for training + validation
+Num_of_training_and_validation_frame = 50000;  % Total number of frames for training + validation
 SNR_values = 5:5:25;                 % List of SNR values (5, 10, 15, 20, 25)
 
 %% Parameters
@@ -117,10 +117,8 @@ for batch = 1:num_batches
         channel_h = channel_responses_all{ mod(Frame - 1, length(channel_responses_all)) + 1 };
         Multitap_Channel_Signal = conv(Transmitted_signal, channel_h);
         Multitap_Channel_Signal = Multitap_Channel_Signal(1 : length(Transmitted_signal));
-        es = mean(abs(Multitap_Channel_Signal).^2);
         % Additive white Gaussian noise
-        [Multitap_Channel_Signal,noi] = awgn(Multitap_Channel_Signal, SNR, 'measured');
-        disp(10*log10(es/noi));
+        [Multitap_Channel_Signal] = awgn(Multitap_Channel_Signal, SNR, 'measured');
         % OFDM receiver with known channel (idealized)
         Channel_signal_when_h_is_known = [1; zeros(size(Multitap_Channel_Signal,1)-1, 1)];
         [Received_data, ~] = OFDM_Receiver(Multitap_Channel_Signal, Num_of_FFT, length_of_CP, length_of_symbol, Channel_signal_when_h_is_known);

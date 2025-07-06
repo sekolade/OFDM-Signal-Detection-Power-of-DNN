@@ -1,12 +1,12 @@
 function H_MMSE = MMSE_channel_estimator(H_LS_values, noise_power, Pilot_indices, ...
-                                         R_H, mu_H, SNRdB)
+                                         R_H, mu_H)
 
 %   H_LS_values    : LS channel estimation result
-%   Ep             : Transmitted Pilot Power
+%   noise_power    : in dB
 %   Pilot_indices  : indices of the pilot inserted subcarriers
 %   R_H            : Nsc×Nsc freq domain covariance matrix
 %   mu_H           : Nsc×1 freq domain mean
-%   SNRdB          : received SNR in dB
+
 %   Nsc is the total number of (used) subcarrier, and DC is removed,
 %   column vectors are expected. 
 %
