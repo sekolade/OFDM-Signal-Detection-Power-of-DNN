@@ -30,6 +30,7 @@ DNN_SER_over_SNR  = zeros(length(SNR_Range), 1);
 
 %% Load pre-trained deep neural networks for all OFDM blocks
 load('savednets/DNN_Trained_ALL_Blocks4.mat');  % Contains DNN_Trained_All{1..8}
+load('savedchans.mat','h_eq_cell');
 
 %% Configure WINNER-II channel layout and parameters
 AA(1) = winner2.AntennaArray('UCA', 16, 0.3);   % Base station: uniform circular array, 16 elements, 0.3λ spacing
@@ -78,7 +79,13 @@ for SNR = SNR_Range
     
     Num_of_subcarriers  = 63;                  % Data subcarriers (excluding DC)
     Num_of_FFT          = Num_of_subcarriers + 1;  % FFT size including DC bin
-    
+    %% Channel mean and covariance estimation
+    h_all  = cell2mat(h_eq_cell.');              % (frameLenSym × Nframe)
+    H_all  = fft(h_all, Num_of_FFT, 1);          % (Nsc × Nframe)  (Nsc=64)
+    H_all_data = H_all(2:end,:);        % 63×N
+    mu_H   = mean(H_all_data, 2);                     % (Nsc × 1)
+    R_H    = cov(H_all_data.');                       % (Nsc × Nsc)
+    %%
     % Set cyclic prefix length based on flag
     if cyclic_prefix == 1
         length_of_CP = 16;                     % CP length in samples
@@ -150,10 +157,26 @@ for SNR = SNR_Range
         frameLen          = size(Transmitted_signal, 1);
         
         % --- Configure and generate WINNER-II channel impulse response ---
-        cfgWim.RandomSeed  = randi([0 2^31 - 1]);   % New random seed per frame
-        for i = sum(cfgLayout.NofSect)+(1:length(MSIdx))
-            cfgLayout.Stations(i).Velocity = rand(3,1) - 0.5;  % Random MS velocity vector
+%         cfgWim.RandomSeed  = randi([0 2^31 - 1]);   % New random seed per frame
+%         for i = sum(cfgLayout.NofSect)+(1:length(MSIdx))
+%             cfgLayout.Stations(i).Velocity = rand(3,1) - 0.5;  % Random MS velocity vector
+%         end
+
+        % Based on WINNER II Delay distribution, CDF calculation to guarantee
+        % maximum delay < 16 sampling period (specified in original paper) by
+        % arranging mobile velocity
+        numBSSect = sum(cfgLayout.NofSect);
+        p = 99.99 / 100; 
+        z = norminv(p, 0, 1);
+        logDS_th = -6.63 + 0.32 * z;
+        DS_th = 10.^logDS_th;
+        max_fs = 16 / DS_th;
+        vel_max = max_fs*((2.99792458e8/cfgWim.CenterFrequency/2/2000000));
+        for k = numBSSect + 1 : numBSSect + numel(MSIdx)
+            cfgLayout.Stations(k).Velocity = (rand(3,1) - 0.5)/0.5 * vel_max;
         end
+
+
         WINNERChan = comm.WINNER2Channel(cfgWim, cfgLayout);
         chanInfo   = info(WINNERChan);
         Fs         = chanInfo.SampleRate;          % Channel sampling rate
@@ -208,25 +231,28 @@ for SNR = SNR_Range
         [Unrecovered_signal, Unrecovered_signal_when_h_is_known] = ...
             OFDM_Receiver(Multitap_Channel_Signal, Num_of_FFT, length_of_CP, length_of_symbol, Channel_signal_when_h_is_known);
         
-        % --- Least Squares (LS) channel estimation from pilots ---
+        %% --- Least Squares (LS) and MMSE channel estimation from pilots ---
         Received_pilot = Unrecovered_signal(:, Pilot_location);
-        H_LS_pilots   = Received_pilot(2:end);                     % Remove DC index
-        H_LS_values   = H_LS_pilots(Pilot_indices) ./ Pilot_value(Pilot_indices);
+        Received_pilot_data   = Received_pilot(2:end);      % Remove DC index
+        Y_p = Received_pilot_data(Pilot_indices);           % Recieved pilots, pilot inserted subcarriers
+        X_p = Pilot_value(Pilot_indices);                   % Transmitted pilots, pilot inserted subcarriers
+        Ep = mean(abs(X_p).^2);                             % Average transmitted pilot power
+        
         all_indices   = 1:63;
+
+        H_LS_values   = Y_p ./ X_p;
         H_LS          = interp1(Pilot_indices, H_LS_values, all_indices, 'linear', 'extrap').';
         
-        % --- Zero-Forcing equalization ---
-        Received_Signal_ZF = Unrecovered_signal(2:end, data_location) ./ H_LS(:);
-        Received_data_ZF   = Received_Signal_ZF;
+        H_MMSE_values = MMSE_channel_estimator(H_LS_values, Ep, Pilot_indices, R_H, mu_H, SNR);
+        H_MMSE        = interp1(Pilot_indices, H_MMSE_values, all_indices, 'linear', 'extrap').';
         
-        % --- MMSE channel estimation and equalization ---
-        Multitap_h_est = channel_h;  % True channel taps for MMSE reference
-        [H_MMSE_h, rf, rf2] = MMSE_Channel_Tap_Block_Pilot_Demo_1(...
-                                    Pilot_indices, Received_pilot(2:end), ...
-                                    Pilot_value, Num_of_FFT-1, Frame_size, SNR, Multitap_h_est');
-        H_MMSE             = H_MMSE_h;
-        Received_Signal_MMSE = Unrecovered_signal(2:end,:) ./ H_MMSE;
-        Received_data_MMSE   = Received_Signal_MMSE(:, data_location);
+            % --- Zero-Forcing equalization ---
+            Received_Signal_ZF = Unrecovered_signal(2:end, data_location) ./ H_LS(:);
+            Received_data_ZF   = Received_Signal_ZF;
+        
+            % --- MMSE equalization ---  
+            Received_Signal_MMSE = Unrecovered_signal(2:end,data_location) ./ H_MMSE(:);
+            Received_data_MMSE   = Received_Signal_MMSE;
         
         %% Compute BER and SER for MMSE
         dataSym_Rx          = QPSK_Demodulator(Received_data_MMSE);
@@ -297,6 +323,7 @@ for SNR = SNR_Range
     
     DNN_BER_over_SNR(SNR/5,1) = (DNN_total_bit_errs / Num_of_bits_DNN) * 8;
     DNN_SER_over_SNR(SNR/5,1) = (DNN_total_sym_errs / Num_of_QPSK_symbols_DNN) * 8;
+    
 end
 
 %% Plot BER vs. SNR for ZF, MMSE, and DNN detectors

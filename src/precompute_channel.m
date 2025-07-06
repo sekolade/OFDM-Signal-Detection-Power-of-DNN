@@ -47,11 +47,26 @@ parfor ii = 1:numSamples
     cfgLayout.Stations(2).Pos(1:2)  = [ 10; 180];% MS position [x; y] in meters
 
     % Assign random velocity vector to mobile station
-    numBSSect = sum(cfgLayout.NofSect);
-    for k = numBSSect + 1 : numBSSect + numel(MSIdx)
-        cfgLayout.Stations(k).Velocity = rand(3,1) - 0.5;  % Uniform in [-0.5, 0.5] m/s per axis
-    end
+%     numBSSect = sum(cfgLayout.NofSect);
+%     for k = numBSSect + 1 : numBSSect + numel(MSIdx)
+%         cfgLayout.Stations(k).Velocity = rand(3,1) - 0.5;  % Uniform in [-0.5, 0.5] m/s per axis
+%     end
 
+
+    % Based on WINNER II Delay distribution, CDF calculation to guarantee
+    % maximum delay < 16 sampling period (specified in original paper) by
+    % arranging mobile velocity
+    numBSSect = sum(cfgLayout.NofSect);
+    p = 99.99 / 100; 
+    z = norminv(p, 0, 1);
+    logDS_th = -6.63 + 0.32 * z;
+    DS_th = 10.^logDS_th;
+    max_fs = 16 / DS_th;
+    vel_max = max_fs*((2.99792458e8/cfgWim.CenterFrequency/2/2000000));
+    for k = numBSSect + 1 : numBSSect + numel(MSIdx)
+        cfgLayout.Stations(k).Velocity = (rand(3,1) - 0.5)/0.5 * vel_max;
+    end
+    
     % Channel parameter settings
     cfgWim = winner2.wimparset;
     cfgWim.NumTimeSamples      = frameLenSym * 40;  
